@@ -1,2 +1,3 @@
 [pyworkflow.plugin]
 diffdock = diffdock
+

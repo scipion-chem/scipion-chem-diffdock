@@ -5,10 +5,9 @@ Summary: Scipion framework plugin for the use of DiffDock models for protein-lig
 Home-page: https://github.com/scipion-chem/scipion-chem-diffdock
 Author: Daniel Del Hoyo Gomez
 Author-email: scipion@cnb.csic.es
+License: UNKNOWN
 Keywords: scipion pdb scipion-3 AI docking
-Requires-Dist: scipion-pyworkflow
-Requires-Dist: scipion-em
-Requires-Dist: scipion-chem
+Platform: UNKNOWN
 
 ================================
 DiffDock scipion plugin
@@ -79,3 +78,5 @@ Status devel version:
 Status production version: 
 
 .. image:: http://scipion-test.cnb.csic.es:9980/badges/bioinformatics_prod.svg
+
+

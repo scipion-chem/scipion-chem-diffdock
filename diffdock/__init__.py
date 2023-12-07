@@ -70,15 +70,15 @@ class Plugin(pwchemPlugin):
 		# Installing package
 		installer.getCloneCommand('https://github.com/gcorso/DiffDock.git', targeName='DIFFDOCK_CLONED') \
 			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
-			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && conda install -y pytorch==1.11.0 pytorch-cuda=11.7 -c pytorch -c nvidia', 'PYTORCH_INSTALLED')\
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'pip install --jobs=6 torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric==2.0.4 '
+									f'conda install -y pytorch==1.11.0 pytorch-cuda=11.7 -c pytorch -c nvidia', 'PYTORCH_INSTALLED')\
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+									f'pip install torch-scatter torch-sparse==0.6.14 torch-cluster torch-spline-conv torch-geometric==2.0.4 '
 									f'-f https://data.pyg.org/whl/torch-1.11.0+cu117.html && '
-									f'python -m pip install --jobs=6 PyYAML scipy "networkx[default]" '
+									f'python -m pip install PyYAML scipy "networkx[default]" '
 									f'biopython rdkit-pypi e3nn spyrmsd pandas biopandas', 'DIFFDOCK_INSTALLED') \
-			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && pip install "fair-esm[esmfold]" && '
-									f'pip install "dllogger @ git+https://github.com/NVIDIA/dllogger.git" && '
-									f'pip install "openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307"', 'ESM_INSTALLED') \
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+									f'pip install fair-esm && pip install git+https://github.com/facebookresearch/esm.git', 'ESM_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
 
 
