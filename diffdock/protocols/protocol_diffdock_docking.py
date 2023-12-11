@@ -38,7 +38,7 @@ from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
-  _label = 'diffdock virtual screening'
+  _label = 'diffdock docking'
 
   def __init__(self, **kwargs):
     EMProtocol.__init__(self, **kwargs)
@@ -76,14 +76,14 @@ class ProtDiffDockDocking(EMProtocol):
 
 
   def convertStep(self):
-    outDir = self.getInputMolsDir()
-    for mol in self.inputSmallMols.get():
-      fnSmall = os.path.abspath(mol.getFileName())
-      if fnSmall.endswith('.pdbqt'):
-        args = f' -i "{fnSmall}" -of sdf --outputDir "{outDir}" --outputName {getBaseName(fnSmall)}'
-        pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=outDir, popen=True)
-      else:
-        os.link(fnSmall, os.path.join(outDir, os.path.split(fnSmall)[-1]))
+    smiDir = self.getInputSMIDir()
+    if not os.path.exists(smiDir):
+      os.makedirs(smiDir)
+
+    molDir = self.copyInputMolsInDir()
+    args = ' --multiFiles -iD "{}" --pattern "{}" -of smi --outputDir "{}"'. \
+      format(molDir, '*', smiDir)
+    pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=smiDir)
 
     inASFile = self.inputAtomStruct.get().getFileName()
     outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
@@ -107,16 +107,29 @@ class ProtDiffDockDocking(EMProtocol):
     self.runJob(program, args, cwd=self._getExtraPath())
 
 
-  def getInputMolsDir(self):
-    return os.path.abspath(self._getTmpPath('inMols'))
-  
-  def getInputMolFiles(self):
-    imolFiles = []
-    iDir = self.getInputMolsDir()
-    for file in os.listdir(iDir):
-      imolFiles.append(os.path.join(iDir, file))
-    return imolFiles
+  ###########################################################
 
+  def copyInputMolsInDir(self):
+    oDir = os.path.abspath(self._getTmpPath('inMols'))
+    if not os.path.exists(oDir):
+      os.makedirs(oDir)
+
+    for mol in self.inputSmallMols.get():
+      os.link(mol.getFileName(), os.path.join(oDir, os.path.split(mol.getFileName())[-1]))
+    return oDir
+
+  def getInputSMIDir(self):
+    return os.path.abspath(self._getExtraPath('inputSMI'))
+
+  def getInputSMIs(self):
+    smisDic = {}
+    iDir = self.getInputSMIDir()
+    for file in os.listdir(iDir):
+      with open(os.path.join(iDir, file)) as f:
+        title, smi = f.readline().split()
+        smisDic[title] = smi.strip()
+    return smisDic
+  
   def getInputASFile(self):
     iASFile = None
     for file in os.listdir(self._getTmpPath()):
@@ -129,12 +142,11 @@ class ProtDiffDockDocking(EMProtocol):
 
   def buildCSVFile(self):
     csvFile = self.getInputCSV()
-    iMolFiles = self.getInputMolFiles()
+    smiDic = self.getInputSMIs()
     iASFile = self.getInputASFile()
 
     with open(csvFile, 'w') as f:
       f.write('complex_name,protein_path,ligand_description,protein_sequence\n')
-      for molFile in iMolFiles:
-        cName = getBaseName(molFile)
-        f.write(f'{cName},{iASFile},{molFile},\n')
+      for title, smi in smiDic.items():
+        f.write(f'{title},{iASFile},{smi},\n')
     return csvFile
