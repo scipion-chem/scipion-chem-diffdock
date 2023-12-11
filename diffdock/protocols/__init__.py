@@ -24,5 +24,5 @@
 # *
 # **************************************************************************
 
-from .protocol_diffdock_docking import ProtConPLexPrediction
+from .protocol_diffdock_docking import ProtDiffDockDocking
 
