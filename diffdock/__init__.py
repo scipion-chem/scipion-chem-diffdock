@@ -84,11 +84,5 @@ class Plugin(pwchemPlugin):
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
-	def runScript(cls, protocol, scriptName, args, envDict, cwd=None, popen=False):
-		""" Run rdkit command from a given protocol. """
-		scriptName = cls.getScriptsDir(scriptName)
-		fullProgram = '%s && %s %s' % (cls.getEnvActivationCommand(envDict), 'python', scriptName)
-		if not popen:
-			protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
-		else:
-			subprocess.check_call(f'{fullProgram} {args}', cwd=cwd, shell=True)
+	def getModelsDir(cls, path=''):
+		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock/workdir', path))

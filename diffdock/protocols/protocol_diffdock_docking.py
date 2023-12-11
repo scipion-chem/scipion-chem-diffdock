@@ -24,16 +24,17 @@
 # *
 # **************************************************************************
 
-import os, glob, shutil, subprocess
+import os
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
 
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
+from pwchem.utils import getBaseName, pdbqt2other
 
-from .. import Plugin as conplexPlugin
-from ..constants import CONPLEX_DIC
+from .. import Plugin as diffdockPlugin
+from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
@@ -46,17 +47,26 @@ class ProtDiffDockDocking(EMProtocol):
   def _defineParams(self, form):
     form.addSection(label='Input')
     iGroup = form.addGroup('Input')
-    iGroup.addParam('inputSequences', params.PointerParam, pointerClass="SetOfSequences",
-                    label='Input protein sequences: ',
-                    help="Set of protein sequences to perform the screening on")
+    iGroup.addParam('inputAtomStruct', params.PointerParam, pointerClass="AtomStruct",
+                    label='Input atomic structure: ',
+                    help="The atomic structure to use as receptor in the docking")
     iGroup.addParam('inputSmallMols', params.PointerParam, pointerClass="SetOfSmallMolecules",
                     label='Input small molecules: ',
                     help='Set of small molecules to input the model for predicting their interactions')
 
-    mGroup = form.addGroup('Model')
-    mGroup.addParam('modelName', params.EnumParam, choices=conplexPlugin.getLocalModels(),
-                    label='Model to use: ',
-                    help='Choose a model from those in {}'.format(conplexPlugin.getModelsDir()))
+    pGroup = form.addGroup('Prediction')
+    pGroup.addParam('nSamples', params.IntParam, label='Number of positions: ', default=20,
+                    help='Number of positions to generate')
+    pGroup.addParam('inferSteps', params.IntParam, label='Inference steps: ', default=20,
+                   help='Number of denoising steps')
+
+    pGroup.addParam('batchSize', params.IntParam, label='Batch size: ', default=10, expertLevel=params.LEVEL_ADVANCED,
+                    help='Batch size for the model')
+    pGroup.addParam('actualSteps', params.IntParam, label='Actual steps: ', default=18,
+                    expertLevel=params.LEVEL_ADVANCED, help='Number of denoising steps that are actually performed')
+    pGroup.addParam('finalDenosise', params.BooleanParam, label='Final step denoise: ', default=False,
+                    expertLevel=params.LEVEL_ADVANCED,
+                    help='Whether to use no noise in the final step of the reverse diffusion')
 
   def _insertAllSteps(self):
     self._insertFunctionStep(self.convertStep)
@@ -66,54 +76,65 @@ class ProtDiffDockDocking(EMProtocol):
 
 
   def convertStep(self):
-    smiDir = self.getInputSMIDir()
-    if not os.path.exists(smiDir):
-      os.makedirs(smiDir)
+    outDir = self.getInputMolsDir()
+    for mol in self.inputSmallMols.get():
+      fnSmall = os.path.abspath(mol.getFileName())
+      if fnSmall.endswith('.pdbqt'):
+        args = f' -i "{fnSmall}" -of sdf --outputDir "{outDir}" --outputName {getBaseName(fnSmall)}'
+        pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=outDir, popen=True)
+      else:
+        os.link(fnSmall, os.path.join(outDir, os.path.split(fnSmall)[-1]))
 
-    molDir = self.copyInputMolsInDir()
-    args = ' --multiFiles -iD "{}" --pattern "{}" -of smi --outputDir "{}"'. \
-      format(molDir, '*', smiDir)
-    pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=smiDir)
+    inASFile = self.inputAtomStruct.get().getFileName()
+    outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
+    if inASFile.endswith('.pdbqt'):
+      pdbqt2other(self, inASFile, outASFile)
 
   def predictStep(self):
-    smisDic = self.getInputSMIs()
-    protSeqsDic = self.getInputSeqs()
+    csvFile = self.buildCSVFile()
+    outDir = os.path.abspath(self._getExtraPath())
+    scoreModelPath = os.path.join(diffdockPlugin.getModelsDir('paper_score_model/'))
+    confModelPath = os.path.join(diffdockPlugin.getModelsDir('paper_score_model/'))
 
-    argFile = os.path.abspath(self._getExtraPath('inputConPLex.tsv'))
-    with open(argFile, 'w') as f:
-      for seqName, seq in protSeqsDic.items():
-        for smi, smiName in smisDic.items():
-          f.write(f'{seqName}\t{smiName}\t{seq}\t{smi}\n')
+    program = f'{pwchemPlugin.getEnvActivationCommand(DIFFDOCK_DIC)} && python -m inference '
+    args = f'--protein_ligand_csv {csvFile} --out_dir {outDir} '
+    args += f'--model_dir {scoreModelPath} --confidence_model_dir {confModelPath} '
+    args += f'--inference_steps {self.inferSteps.get()} --samples_per_complex {self.nSamples.get()} ' \
+            f'--batch_size {self.batchSize.get()} --actual_steps {self.actualSteps.get()} '
+    if not self.finalDenoise.get():
+      args += '--no_final_step_noise '
 
-    modelPath = os.path.join(conplexPlugin.getModelsDir(), self.getEnumText('modelName'))
-    program = f'{pwchemPlugin.getEnvActivationCommand(CONPLEX_DIC)} && diffdock-dti predict '
-    args = f"--data-file {argFile} --model-path {modelPath} --outfile results.tsv"
     self.runJob(program, args, cwd=self._getExtraPath())
 
-  def copyInputMolsInDir(self):
-    oDir = os.path.abspath(self._getTmpPath('inMols'))
-    if not os.path.exists(oDir):
-      os.makedirs(oDir)
 
-    for mol in self.inputSmallMols.get():
-      os.link(mol.getFileName(), os.path.join(oDir, os.path.split(mol.getFileName())[-1]))
-    return oDir
-
-  def getInputSMIDir(self):
-    return os.path.abspath(self._getExtraPath('inputSMI'))
-
-  def getInputSMIs(self):
-    smisDic = {}
-    iDir = self.getInputSMIDir()
+  def getInputMolsDir(self):
+    return os.path.abspath(self._getTmpPath('inMols'))
+  
+  def getInputMolFiles(self):
+    imolFiles = []
+    iDir = self.getInputMolsDir()
     for file in os.listdir(iDir):
-      with open(os.path.join(iDir, file)) as f:
-        title, smi = f.readline().split()
-        smisDic[title] = smi.strip()
-    return smisDic
+      imolFiles.append(os.path.join(iDir, file))
+    return imolFiles
 
-  def getInputSeqs(self):
-    seqsDic = {}
-    for seq in self.inputSequences.get():
-      seqsDic[seq.getSeqName()] = seq.getSequence()
-    return seqsDic
+  def getInputASFile(self):
+    iASFile = None
+    for file in os.listdir(self._getTmpPath()):
+      if file.endswith('.pdb'):
+        iASFile = self._getTmpPath(file)
+    return iASFile
 
+  def getInputCSV(self):
+    return os.path.abspath(self._getExtraPath('inputPairs.csv'))
+
+  def buildCSVFile(self):
+    csvFile = self.getInputCSV()
+    iMolFiles = self.getInputMolFiles()
+    iASFile = self.getInputASFile()
+
+    with open(csvFile, 'w') as f:
+      f.write('complex_name,protein_path,ligand_description,protein_sequence\n')
+      for molFile in iMolFiles:
+        cName = getBaseName(molFile)
+        f.write(f'{cName},{iASFile},{molFile},\n')
+    return csvFile
