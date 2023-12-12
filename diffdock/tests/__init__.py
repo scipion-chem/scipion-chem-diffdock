@@ -24,4 +24,4 @@
 # *
 # **************************************************************************
 
-from diffdock.tests.test_conplex import *
+from diffdock.tests.test_diffdock import *
