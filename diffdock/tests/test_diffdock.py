@@ -47,14 +47,14 @@ class TestDiffDock(BaseTest):
   def _runImportPDB(cls):
     cls.protImportPDB = cls.newProtocol(
       ProtImportPdb,
-      inputPdbData=0, pdbId='5ni1')
+      inputPdbData=1, pdbFile=cls.ds.getFile('PDBx_mmCIF/1ake_mut1.pdb'))
     cls.proj.launchProtocol(cls.protImportPDB, wait=False)
 
   @classmethod
   def _runImportSmallMols(cls):
       cls.protImportSmallMols = cls.newProtocol(
           ProtChemImportSmallMolecules,
-          filesPath=cls.dsLig.getFile('sdf'))
+          filesPath=cls.dsLig.getFile('mol2'))
       cls.proj.launchProtocol(cls.protImportSmallMols, wait=False)
 
   def _runSetFilter(self, inProt, number, property):
