@@ -84,5 +84,5 @@ class Plugin(pwchemPlugin):
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
-	def getModelsDir(cls, path=''):
-		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock/workdir', path))
+	def getPackageDir(cls, path=''):
+		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), path))

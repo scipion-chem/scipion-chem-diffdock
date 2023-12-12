@@ -28,9 +28,11 @@ import os
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
+import pyworkflow.object as pwobj
 
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
+from pwchem.objects import SetOfSmallMolecules, SmallMolecule
 from pwchem.utils import getBaseName, pdbqt2other
 
 from .. import Plugin as diffdockPlugin
@@ -54,6 +56,14 @@ class ProtDiffDockDocking(EMProtocol):
                     label='Input small molecules: ',
                     help='Set of small molecules to input the model for predicting their interactions')
 
+    mGroup = form.addGroup('Model', expertLevel=params.LEVEL_ADVANCED)
+    mGroup.addParam('scoreModel', params.PathParam, label='Score model (pt): ', default='',
+                    help="Select the model file you want to use for scoring. "
+                         "\nIf None, the default behaviour will be used.")
+    mGroup.addParam('confidenceModel', params.PathParam, label='Confidence model (pt): ', default='',
+                    help="Select the model file you want to use for confidence calculation. "
+                         "\nIf None, the default behaviour will be used.")
+
     pGroup = form.addGroup('Prediction')
     pGroup.addParam('nSamples', params.IntParam, label='Number of positions: ', default=20,
                     help='Number of positions to generate')
@@ -62,17 +72,14 @@ class ProtDiffDockDocking(EMProtocol):
 
     pGroup.addParam('batchSize', params.IntParam, label='Batch size: ', default=10, expertLevel=params.LEVEL_ADVANCED,
                     help='Batch size for the model')
-    pGroup.addParam('actualSteps', params.IntParam, label='Actual steps: ', default=18,
-                    expertLevel=params.LEVEL_ADVANCED, help='Number of denoising steps that are actually performed')
-    pGroup.addParam('finalDenosise', params.BooleanParam, label='Final step denoise: ', default=False,
+    pGroup.addParam('finalDenoise', params.BooleanParam, label='Final step denoise: ', default=False,
                     expertLevel=params.LEVEL_ADVANCED,
                     help='Whether to use no noise in the final step of the reverse diffusion')
 
   def _insertAllSteps(self):
     self._insertFunctionStep(self.convertStep)
     self._insertFunctionStep(self.predictStep)
-    # todo: how to express the output
-    # self._insertFunctionStep('createOutputStep')
+    self._insertFunctionStep(self.createOutputStep)
 
 
   def convertStep(self):
@@ -81,33 +88,82 @@ class ProtDiffDockDocking(EMProtocol):
       os.makedirs(smiDir)
 
     molDir = self.copyInputMolsInDir()
-    args = ' --multiFiles -iD "{}" --pattern "{}" -of smi --outputDir "{}"'. \
-      format(molDir, '*', smiDir)
+    args = f' --multiFiles -iD "{molDir}" --pattern "*" -of smi --outputDir "{smiDir}"'
     pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=smiDir)
 
     inASFile = self.inputAtomStruct.get().getFileName()
     outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
     if inASFile.endswith('.pdbqt'):
       pdbqt2other(self, inASFile, outASFile)
+    else:
+      os.link(inASFile, outASFile)
 
   def predictStep(self):
     csvFile = self.buildCSVFile()
     outDir = os.path.abspath(self._getExtraPath())
-    scoreModelPath = os.path.join(diffdockPlugin.getModelsDir('paper_score_model/'))
-    confModelPath = os.path.join(diffdockPlugin.getModelsDir('paper_score_model/'))
 
     program = f'{pwchemPlugin.getEnvActivationCommand(DIFFDOCK_DIC)} && python -m inference '
     args = f'--protein_ligand_csv {csvFile} --out_dir {outDir} '
-    args += f'--model_dir {scoreModelPath} --confidence_model_dir {confModelPath} '
     args += f'--inference_steps {self.inferSteps.get()} --samples_per_complex {self.nSamples.get()} ' \
-            f'--batch_size {self.batchSize.get()} --actual_steps {self.actualSteps.get()} '
+            f'--batch_size {self.batchSize.get()} '
     if not self.finalDenoise.get():
       args += '--no_final_step_noise '
 
-    self.runJob(program, args, cwd=self._getExtraPath())
+    scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else None
+    confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else None
+    if scoreModelDir:
+      args += f'--model_dir {scoreModelDir} '
+    if confModelDir:
+      args += f'--confidence_model_dir {confModelDir} '
+
+    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
+
+  def createOutputStep(self):
+    outDir = self._getPath('outputLigands')
+    if not os.path.exists(outDir):
+      os.mkdir(outDir)
+    outputSet = SetOfSmallMolecules().create(outputPath=outDir)
+
+    outDic = self.parseOutputDocks()
+    for smallMol in self.inputSmallMols.get():
+      molName = getBaseName(smallMol.getFileName())
+      for outFile in outDic[molName]:
+        conf = outFile.split('_confidence')[-1].split('.sdf')[0]
+        posId = outFile.split('/rank')[-1].split('_')[0]
+
+        newSmallMol = SmallMolecule()
+        newSmallMol.copy(smallMol, copyId=False)
+        newSmallMol._energy = pwobj.Float(conf)
+        newSmallMol.poseFile.set(outFile)
+        newSmallMol.setPoseId(posId)
+        newSmallMol.gridId.set(1)
+        newSmallMol.setMolClass('DiffDock')
+        newSmallMol.setDockId(self.getObjId())
+
+        outputSet.append(newSmallMol)
+
+
+    outputSet.proteinFile.set(self.inputAtomStruct.get().getFileName())
+    outputSet.setDocked(True)
+    self._defineOutputs(outputSmallMolecules=outputSet)
 
 
   ###########################################################
+
+  def parseOutputDocks(self):
+    outDirs = []
+    for oDir in os.listdir(self._getExtraPath()):
+      if os.path.isdir(self._getExtraPath(oDir)) and oDir != 'inputSMI':
+        outDirs.append(oDir)
+
+    outDic = {}
+    for oDir in outDirs:
+      outDic[oDir] = []
+      for outFile in os.listdir(self._getExtraPath(oDir)):
+        if '_confidence' in outFile:
+          outDic[oDir].append(os.path.join(self._getExtraPath(oDir), outFile))
+
+    return outDic
 
   def copyInputMolsInDir(self):
     oDir = os.path.abspath(self._getTmpPath('inMols'))
@@ -134,7 +190,7 @@ class ProtDiffDockDocking(EMProtocol):
     iASFile = None
     for file in os.listdir(self._getTmpPath()):
       if file.endswith('.pdb'):
-        iASFile = self._getTmpPath(file)
+        iASFile = os.path.abspath(self._getTmpPath(file))
     return iASFile
 
   def getInputCSV(self):
@@ -147,6 +203,6 @@ class ProtDiffDockDocking(EMProtocol):
 
     with open(csvFile, 'w') as f:
       f.write('complex_name,protein_path,ligand_description,protein_sequence\n')
-      for title, smi in smiDic.items():
+      for smi, title in smiDic.items():
         f.write(f'{title},{iASFile},{smi},\n')
     return csvFile
