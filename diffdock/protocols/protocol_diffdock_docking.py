@@ -39,7 +39,49 @@ from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
-  """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
+  """Run a prediction using a ConPLex trained model over a set of proteins and ligands
+  
+  User IA Manual: DiffDockDocking Protocol
+
+The DiffDockDocking protocol integrates the DiffDock deep learning model to
+predict ligand binding poses based on the structure of a target protein. It
+provides a machine learning?based alternative to traditional docking approaches
+by generating plausible binding conformations through a diffusion model trained
+on experimental complexes.
+
+To use the protocol, the user must provide a protein structure and a set of
+ligands. The protein should be uploaded in a format compatible with the workflow
+and must represent the complete receptor or at least the relevant binding domain.
+Ligands must also be provided as 3D molecular structures with defined atom types
+and conformations. The system does not require a predefined docking box, since
+DiffDock uses geometric learning to predict likely binding regions directly from
+the receptor surface.
+
+The protocol includes options to configure the number of poses to generate per
+ligand. These predictions are sampled stochastically from the learned diffusion
+distribution, so multiple runs can yield slightly different results. Users may
+also select the level of filtering or post-processing applied to the output
+poses, including score thresholds based on internal confidence metrics learned
+by the model.
+
+Advanced options allow the user to modify runtime behavior such as batch size,
+GPU utilization, or deterministic seeds to ensure reproducibility. These settings
+are especially relevant when running large-scale docking experiments or comparing
+outputs across workflows. The user may also specify whether the receptor should
+be preprocessed again or use an existing precomputed representation.
+
+Once docking is complete, the output consists of a list of poses for each ligand,
+each with an associated confidence score and predicted alignment. The structures
+can be visualized and ranked, and they may be passed to downstream protocols
+within Scipion-Chem for further refinement, clustering, or scoring with
+physics-based tools. All results are recorded with metadata to allow reproducible
+comparison and integration with ligand libraries.
+
+In summary, the DiffDockDocking protocol provides an AI-driven approach to
+ligand?receptor docking. It bypasses traditional scoring functions and search
+strategies by using learned spatial representations, offering a fast and
+data-informed way to explore binding interactions with minimal manual setup.
+  """
   _label = 'diffdock docking'
 
   def __init__(self, **kwargs):
