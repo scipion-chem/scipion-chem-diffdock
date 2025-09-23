@@ -67,18 +67,15 @@ class Plugin(pwchemPlugin):
 		installer = InstallHelper(DIFFDOCK_DIC['name'], packageHome=cls.getVar(DIFFDOCK_DIC['home']),
 															packageVersion=DIFFDOCK_DIC['version'])
 
+		ymlFile = "environment.yml"
+		splitScript = cls.getScriptsDir('splitPipBlocks.py')
+
 		# Installing package
-		installer.getCloneCommand('https://github.com/gcorso/DiffDock.git', targeName='DIFFDOCK_CLONED') \
-			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
-			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'conda install -y pytorch==1.11.0 pytorch-cuda=11.7 -c pytorch -c nvidia', 'PYTORCH_INSTALLED')\
-			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'pip install torch-scatter torch-sparse==0.6.14 torch-cluster torch-spline-conv torch-geometric==2.0.4 '
-									f'-f https://data.pyg.org/whl/torch-1.11.0+cu117.html && '
-									f'python -m pip install PyYAML scipy "networkx[default]" '
-									f'biopython rdkit-pypi e3nn spyrmsd pandas biopandas', 'DIFFDOCK_INSTALLED') \
-			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'pip install fair-esm && pip install git+https://github.com/facebookresearch/esm.git', 'ESM_INSTALLED') \
+		installer.getCloneCommand(cls.getDiffDockGithub(), binaryFolderName='.', targeName='DIFFDOCK_CLONED') \
+			.addCommand(f"sed -i 's/name: diffdock/name: {cls.getEnvName(DIFFDOCK_DIC)}/g' {ymlFile} && "
+									f'conda env create -f "$(python {splitScript} {ymlFile} True)" && '
+									f'python {splitScript} {ymlFile} False | while read -r f; do conda env update -f "$f"; done',
+									'DIFFDOCK_INSTALLED')\
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
 
 
@@ -86,3 +83,13 @@ class Plugin(pwchemPlugin):
 	@classmethod
 	def getPackageDir(cls, path=''):
 		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), path))
+
+	@classmethod
+	def getDiffDockGithub(cls):
+		return 'https://github.com/gcorso/DiffDock.git'
+
+	@classmethod
+	def getPluginHome(cls, path=""):
+		import diffdock
+		fnDir = os.path.split(diffdock.__file__)[0]
+		return os.path.join(fnDir, path)

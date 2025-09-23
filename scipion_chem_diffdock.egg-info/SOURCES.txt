@@ -12,7 +12,7 @@ diffdock/runTests.py
 diffdock/protocols/__init__.py
 diffdock/protocols/protocol_diffdock_docking.py
 diffdock/tests/__init__.py
-diffdock/tests/test_conplex.py
+diffdock/tests/test_diffdock.py
 diffdock/utils/__init__.py
 diffdock/utils/utils.py
 diffdock/viewers/__init__.py
