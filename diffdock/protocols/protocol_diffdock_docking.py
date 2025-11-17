@@ -40,7 +40,7 @@ from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
-  """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
+  """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
 
   def __init__(self, **kwargs):
