@@ -161,7 +161,7 @@ class ProtDiffDockDocking(EMProtocol):
     for oDir in outDirs:
       outDic[oDir] = []
       for outFile in os.listdir(self._getExtraPath(oDir)):
-        if '_confidence' in outFile:
+        if '_confidence' in outFile and outFile.split('_confidence-')[-1] != '1000.00.sdf':
           outDic[oDir].append(os.path.join(self._getExtraPath(oDir), outFile))
 
     return outDic
