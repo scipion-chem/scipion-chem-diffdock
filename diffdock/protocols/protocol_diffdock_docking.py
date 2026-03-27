@@ -41,46 +41,137 @@ from ..constants import DIFFDOCK_DIC
 class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a ConPLex trained model over a set of proteins and ligands
   
-  User IA Manual: DiffDockDocking Protocol
+  AI Generated:
 
-The DiffDockDocking protocol integrates the DiffDock deep learning model to
-predict ligand binding poses based on the structure of a target protein. It
-provides a machine learning?based alternative to traditional docking approaches
-by generating plausible binding conformations through a diffusion model trained
-on experimental complexes.
+      ProtDiffDockDocking - User Manual
 
-To use the protocol, the user must provide a protein structure and a set of
-ligands. The protein should be uploaded in a format compatible with the workflow
-and must represent the complete receptor or at least the relevant binding domain.
-Ligands must also be provided as 3D molecular structures with defined atom types
-and conformations. The system does not require a predefined docking box, since
-DiffDock uses geometric learning to predict likely binding regions directly from
-the receptor surface.
+      Overview
+      --------
+      The ProtDiffDockDocking protocol performs protein–ligand docking using the
+      DiffDock deep learning framework, a diffusion model designed to predict
+      ligand binding poses without requiring predefined docking grids or search
+      spaces.
 
-The protocol includes options to configure the number of poses to generate per
-ligand. These predictions are sampled stochastically from the learned diffusion
-distribution, so multiple runs can yield slightly different results. Users may
-also select the level of filtering or post-processing applied to the output
-poses, including score thresholds based on internal confidence metrics learned
-by the model.
+      Instead of relying on classical scoring functions and conformational search,
+      DiffDock learns a generative distribution over ligand poses conditioned on
+      protein structure, enabling rapid and flexible prediction of binding modes.
 
-Advanced options allow the user to modify runtime behavior such as batch size,
-GPU utilization, or deterministic seeds to ensure reproducibility. These settings
-are especially relevant when running large-scale docking experiments or comparing
-outputs across workflows. The user may also specify whether the receptor should
-be preprocessed again or use an existing precomputed representation.
+      This protocol is intended for structure-based drug discovery, virtual
+      screening, and ligand pose prediction tasks.
 
-Once docking is complete, the output consists of a list of poses for each ligand,
-each with an associated confidence score and predicted alignment. The structures
-can be visualized and ranked, and they may be passed to downstream protocols
-within Scipion-Chem for further refinement, clustering, or scoring with
-physics-based tools. All results are recorded with metadata to allow reproducible
-comparison and integration with ligand libraries.
+      Input Requirements
+      ------------------
+      1. **Receptor Structure**:
+         - A single protein structure (AtomStruct format).
+         - Must represent a valid receptor or binding domain.
+         - Accepted formats include PDB or PDBQT (converted internally if needed).
 
-In summary, the DiffDockDocking protocol provides an AI-driven approach to
-ligand?receptor docking. It bypasses traditional scoring functions and search
-strategies by using learned spatial representations, offering a fast and
-data-informed way to explore binding interactions with minimal manual setup.
+      2. **Ligand Set**:
+         - A SetOfSmallMolecules containing ligand structures.
+         - Ligands must have valid 3D coordinates and atom typing.
+         - Each ligand is treated independently for docking.
+
+      Model Configuration (Optional)
+      -----------------------------
+      - **Score Model (pt)**:
+        - Optional pretrained weights for pose scoring.
+        - If not provided, default DiffDock scoring is used.
+
+      - **Confidence Model (pt)**:
+        - Optional model for confidence estimation of predicted poses.
+        - If not provided, default confidence estimation is used.
+
+      Prediction Parameters
+      ---------------------
+      - **Number of Samples (nSamples)**:
+        - Number of candidate poses generated per ligand.
+        - Higher values increase sampling diversity.
+
+      - **Inference Steps (inferSteps)**:
+        - Number of diffusion denoising steps.
+        - Controls refinement quality vs runtime.
+
+      - **Batch Size**:
+        - Number of ligands processed per batch on GPU/CPU.
+
+      - **Final Denoise Option**:
+        - Controls whether noise is removed in the final diffusion step.
+        - Disabling may increase stochastic diversity of outputs.
+
+      Workflow
+      --------
+      1. **Input Conversion**:
+         - Ligands are converted to SMILES format using OpenBabel.
+         - Receptor structure is copied or converted to PDB format if required.
+
+      2. **CSV Construction**:
+         - A protein–ligand pairing CSV file is generated.
+         - Each row defines a docking task:
+           (protein path, ligand SMILES, complex identifier).
+
+      3. **DiffDock Inference**:
+         - The DiffDock model is executed via its inference module.
+         - The diffusion process generates multiple ligand binding poses.
+         - Each pose is assigned:
+           - Predicted spatial coordinates,
+           - Confidence score,
+           - Rank within sampled ensemble.
+
+      4. **Pose Collection**:
+         - Output poses are stored in structured directories.
+         - Each ligand produces multiple ranked conformations.
+
+      5. **Post-processing and Packaging**:
+         - Docked poses are converted into SmallMolecule objects.
+         - Metadata such as confidence scores and pose IDs are attached.
+         - Results are grouped into a SetOfSmallMolecules.
+
+      Outputs
+      -------
+      - **Docked Ligand Ensemble**:
+        - SetOfSmallMolecules containing predicted binding poses.
+        - Each molecule includes:
+          - 3D docked pose file (SDF),
+          - Confidence score (energy proxy),
+          - Pose rank ID,
+          - Docking method metadata (DiffDock).
+
+      - **Receptor Structure Reference**:
+        - Stored alongside output dataset for reproducibility.
+
+      Advanced Options
+      ----------------
+      - Control of diffusion sampling depth and diversity.
+      - Adjustable batch size for performance tuning.
+      - Optional external scoring and confidence models.
+      - Support for deterministic or stochastic inference modes.
+      - GPU-accelerated execution through environment configuration.
+
+      Validation & Warnings
+      ---------------------
+      - Ligands must be valid 3D molecular structures.
+      - Receptor must be structurally complete or biologically meaningful.
+      - Very large ligand sets may require batching or increased compute resources.
+      - Model-dependent results may vary across runs due to stochastic sampling.
+
+      Practical Recommendations
+      -------------------------
+      - Use higher nSamples for improved pose diversity.
+      - Use more inference steps for higher-quality docking refinement.
+      - Compare multiple poses per ligand instead of relying on top-ranked output only.
+      - Validate top predictions using physics-based scoring methods if available.
+      - Ensure ligand preprocessing is consistent (charges, protonation states).
+
+      Final Perspective
+      -----------------
+      ProtDiffDockDocking provides a modern, AI-driven alternative to classical
+      docking pipelines by leveraging diffusion models to directly generate
+      physically plausible ligand binding poses.
+
+      This approach reduces dependence on explicit search heuristics and enables
+      efficient exploration of protein–ligand interaction space, making it a
+      powerful tool for large-scale virtual screening and structure-based drug
+      design.
   """
   _label = 'diffdock docking'
 
