@@ -33,7 +33,7 @@ import pyworkflow.object as pwobj
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
 from pwchem.objects import SetOfSmallMolecules, SmallMolecule
-from pwchem.utils import getBaseName, pdbqt2other
+from pwchem.utils import getBaseName, pdbqt2other, pdbFromASFile
 
 from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
@@ -93,8 +93,8 @@ class ProtDiffDockDocking(EMProtocol):
 
     inASFile = self.inputAtomStruct.get().getFileName()
     outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
-    if inASFile.endswith('.pdbqt'):
-      pdbqt2other(self, inASFile, outASFile)
+    if inASFile.endswith('.pdbqt') or inASFile.endswith('.cif'):
+      pdbFromASFile(inASFile, outASFile)
     else:
       os.link(inASFile, outASFile)
 
@@ -157,6 +157,7 @@ class ProtDiffDockDocking(EMProtocol):
         outDirs.append(oDir)
 
     outDic = {}
+    print(outDirs)
     for oDir in outDirs:
       outDic[oDir] = []
       for outFile in os.listdir(self._getExtraPath(oDir)):
