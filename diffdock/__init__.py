@@ -71,14 +71,21 @@ class Plugin(pwchemPlugin):
 		installer.getCloneCommand('https://github.com/gcorso/DiffDock.git', targeName='DIFFDOCK_CLONED') \
 			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'conda install -y pytorch==1.11.0 pytorch-cuda=11.7 -c pytorch -c nvidia', 'PYTORCH_INSTALLED')\
+		                f'pip install torch==1.13.1+cu117 '
+		                f'--extra-index-url https://download.pytorch.org/whl/cu117', 'PYTORCH_INSTALLED') \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'pip install torch-scatter torch-sparse==0.6.14 torch-cluster torch-spline-conv torch-geometric==2.0.4 '
-									f'-f https://data.pyg.org/whl/torch-1.11.0+cu117.html && '
-									f'python -m pip install PyYAML scipy "networkx[default]" '
-									f'biopython rdkit-pypi e3nn spyrmsd pandas biopandas', 'DIFFDOCK_INSTALLED') \
+		                f'pip install torch-cluster==1.6.0+pt113cu117 torch-sparse==0.6.16+pt113cu117 '
+		                f'torch-scatter==2.1.0+pt113cu117 torch-spline-conv==1.2.1+pt113cu117 '
+		                f'torch-geometric==2.2.0 '
+		                f'--find-links https://pytorch-geometric.com/whl/torch-1.13.1+cu117.html', 'DIFFDOCK_INSTALLED') \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
-									f'pip install fair-esm && pip install git+https://github.com/facebookresearch/esm.git', 'ESM_INSTALLED') \
+		                f'pip install e3nn==0.5.1 fair-esm==2.0.0 networkx==2.8.4 pandas==1.5.1 '
+		                f'pybind11==2.11.1 pytorch-lightning==1.9.5 rdkit==2022.03.3 '
+		                f'scikit-learn==1.1.0 torchmetrics==0.11.0 '
+		                f'biopython PyYAML scipy spyrmsd biopandas', 'ESM_INSTALLED') \
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+		                f'pip install dllogger@git+https://github.com/NVIDIA/dllogger.git && '
+		                f'pip install "gradio==3.50.*" requests', 'UTILS_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
 
 
