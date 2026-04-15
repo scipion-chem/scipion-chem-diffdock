@@ -157,7 +157,6 @@ class ProtDiffDockDocking(EMProtocol):
         outDirs.append(oDir)
 
     outDic = {}
-    print(outDirs)
     for oDir in outDirs:
       outDic[oDir] = []
       for outFile in os.listdir(self._getExtraPath(oDir)):
