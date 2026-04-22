@@ -68,7 +68,7 @@ class Plugin(pwchemPlugin):
 															packageVersion=DIFFDOCK_DIC['version'])
 
 		# Installing package
-		installer.getCloneCommand('https://github.com/gcorso/DiffDock.git', targeName='DIFFDOCK_CLONED') \
+		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED') \
 			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
 		                f'pip install torch==1.13.1+cu117 '
@@ -91,3 +91,13 @@ class Plugin(pwchemPlugin):
 	@classmethod
 	def getPackageDir(cls, path=''):
 		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), path))
+
+	@classmethod
+	def getDiffDockGithub(cls):
+		return 'https://github.com/gcorso/DiffDock.git'
+
+	@classmethod
+	def getPluginHome(cls, path=""):
+		import diffdock
+		fnDir = os.path.split(diffdock.__file__)[0]
+		return os.path.join(fnDir, path)
