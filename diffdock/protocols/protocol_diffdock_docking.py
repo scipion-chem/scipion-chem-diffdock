@@ -24,7 +24,7 @@
 # *
 # **************************************************************************
 
-import os
+import os, shutil
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
@@ -82,7 +82,6 @@ class ProtDiffDockDocking(EMProtocol):
     self._insertFunctionStep(self.predictStep)
     self._insertFunctionStep(self.createOutputStep)
 
-
   def convertStep(self):
     smiDir = self.getInputSMIDir()
     if not os.path.exists(smiDir):
@@ -93,9 +92,11 @@ class ProtDiffDockDocking(EMProtocol):
     pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=smiDir)
 
     inASFile = self.inputAtomStruct.get().getFileName()
-    outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
+    outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile).replace('.', '_') + '.pdb'))
     if inASFile.endswith('.pdbqt'):
       pdbqt2other(self, inASFile, outASFile)
+    elif inASFile.endswith('.pdb'):
+      shutil.copy(inASFile, outASFile)
     else:
       toPdb(inASFile, outASFile)
 
@@ -128,20 +129,21 @@ class ProtDiffDockDocking(EMProtocol):
     outDic = self.parseOutputDocks()
     for smallMol in self.inputSmallMols.get():
       molName = getBaseName(smallMol.getFileName())
-      for outFile in outDic[molName]:
-        conf = outFile.split('_confidence')[-1].split('.sdf')[0]
-        posId = outFile.split('/rank')[-1].split('_')[0]
+      if molName in outDic:
+        for outFile in outDic[molName]:
+          conf = outFile.split('_confidence')[-1].split('.sdf')[0]
+          posId = outFile.split('/rank')[-1].split('_')[0]
 
-        newSmallMol = SmallMolecule()
-        newSmallMol.copy(smallMol, copyId=False)
-        newSmallMol._energy = pwobj.Float(conf)
-        newSmallMol.poseFile.set(outFile)
-        newSmallMol.setPoseId(posId)
-        newSmallMol.gridId.set(1)
-        newSmallMol.setMolClass('DiffDock')
-        newSmallMol.setDockId(self.getObjId())
+          newSmallMol = SmallMolecule()
+          newSmallMol.copy(smallMol, copyId=False)
+          newSmallMol._energy = pwobj.Float(conf)
+          newSmallMol.poseFile.set(outFile)
+          newSmallMol.setPoseId(posId)
+          newSmallMol.gridId.set(1)
+          newSmallMol.setMolClass('DiffDock')
+          newSmallMol.setDockId(self.getObjId())
 
-        outputSet.append(newSmallMol)
+          outputSet.append(newSmallMol)
 
 
     outputSet.proteinFile.set(self.inputAtomStruct.get().getFileName())
