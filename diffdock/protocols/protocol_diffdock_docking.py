@@ -29,6 +29,7 @@ import os
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
 import pyworkflow.object as pwobj
+from pwem.convert.atom_struct import toPdb
 
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
@@ -39,7 +40,7 @@ from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
-  """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
+  """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
 
   def __init__(self, **kwargs):
@@ -96,7 +97,7 @@ class ProtDiffDockDocking(EMProtocol):
     if inASFile.endswith('.pdbqt'):
       pdbqt2other(self, inASFile, outASFile)
     else:
-      os.link(inASFile, outASFile)
+      toPdb(inASFile, outASFile)
 
   def predictStep(self):
     csvFile = self.buildCSVFile()
@@ -116,7 +117,7 @@ class ProtDiffDockDocking(EMProtocol):
     if confModelDir:
       args += f'--confidence_model_dir {confModelDir} '
 
-    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
+    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir())
 
   def createOutputStep(self):
     outDir = self._getPath('outputLigands')
@@ -160,7 +161,7 @@ class ProtDiffDockDocking(EMProtocol):
     for oDir in outDirs:
       outDic[oDir] = []
       for outFile in os.listdir(self._getExtraPath(oDir)):
-        if '_confidence' in outFile:
+        if '_confidence' in outFile and outFile.split('_confidence-')[-1] != '1000.00.sdf':
           outDic[oDir].append(os.path.join(self._getExtraPath(oDir), outFile))
 
     return outDic
