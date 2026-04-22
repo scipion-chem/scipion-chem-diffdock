@@ -134,10 +134,13 @@ class ProtDiffDockDocking(EMProtocol):
           conf = outFile.split('_confidence')[-1].split('.sdf')[0]
           posId = outFile.split('/rank')[-1].split('_')[0]
 
+          posFile = os.path.join(os.path.dirname(outFile), molName + f'_{posId}.sdf')
+          os.rename(outFile, posFile)
+
           newSmallMol = SmallMolecule()
           newSmallMol.copy(smallMol, copyId=False)
-          newSmallMol._energy = pwobj.Float(conf)
-          newSmallMol.poseFile.set(outFile)
+          newSmallMol.DiffDockScore = pwobj.Float(conf)
+          newSmallMol.poseFile.set(posFile)
           newSmallMol.setPoseId(posId)
           newSmallMol.gridId.set(1)
           newSmallMol.setMolClass('DiffDock')
