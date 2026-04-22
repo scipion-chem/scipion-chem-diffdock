@@ -67,6 +67,9 @@ class Plugin(pwchemPlugin):
 		installer = InstallHelper(DIFFDOCK_DIC['name'], packageHome=cls.getVar(DIFFDOCK_DIC['home']),
 															packageVersion=DIFFDOCK_DIC['version'])
 
+		ymlFile = "environment.yml"
+		splitScript = cls.getScriptsDir('splitPipBlocks.py')
+
 		# Installing package
 		installer.getCloneCommand('https://github.com/gcorso/DiffDock.git', targeName='DIFFDOCK_CLONED') \
 			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
@@ -91,3 +94,13 @@ class Plugin(pwchemPlugin):
 	@classmethod
 	def getPackageDir(cls, path=''):
 		return os.path.abspath(os.path.join(cls.getVar(DIFFDOCK_DIC['home']), path))
+
+	@classmethod
+	def getDiffDockGithub(cls):
+		return 'https://github.com/gcorso/DiffDock.git'
+
+	@classmethod
+	def getPluginHome(cls, path=""):
+		import diffdock
+		fnDir = os.path.split(diffdock.__file__)[0]
+		return os.path.join(fnDir, path)

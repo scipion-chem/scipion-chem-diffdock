@@ -24,11 +24,12 @@
 # *
 # **************************************************************************
 
-import os
+import os, shutil
 
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
 import pyworkflow.object as pwobj
+from pwem.convert.atom_struct import toPdb
 
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
@@ -39,7 +40,7 @@ from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
 class ProtDiffDockDocking(EMProtocol):
-  """Run a prediction using a ConPLex trained model over a set of proteins and ligands"""
+  """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
 
   def __init__(self, **kwargs):
@@ -81,7 +82,6 @@ class ProtDiffDockDocking(EMProtocol):
     self._insertFunctionStep(self.predictStep)
     self._insertFunctionStep(self.createOutputStep)
 
-
   def convertStep(self):
     smiDir = self.getInputSMIDir()
     if not os.path.exists(smiDir):
@@ -92,11 +92,11 @@ class ProtDiffDockDocking(EMProtocol):
     pwchemPlugin.runScript(self, 'obabel_IO.py', args, env=OPENBABEL_DIC, cwd=smiDir)
 
     inASFile = self.inputAtomStruct.get().getFileName()
-    outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile) + '.pdb'))
+    outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile).replace('.', '_') + '.pdb'))
     if inASFile.endswith('.pdbqt') or inASFile.endswith('.cif'):
       pdbFromASFile(inASFile, outASFile)
     else:
-      os.link(inASFile, outASFile)
+      toPdb(inASFile, outASFile)
 
   def predictStep(self):
     csvFile = self.buildCSVFile()
@@ -116,7 +116,7 @@ class ProtDiffDockDocking(EMProtocol):
     if confModelDir:
       args += f'--confidence_model_dir {confModelDir} '
 
-    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
+    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir())
 
   def createOutputStep(self):
     outDir = self._getPath('outputLigands')
@@ -127,20 +127,21 @@ class ProtDiffDockDocking(EMProtocol):
     outDic = self.parseOutputDocks()
     for smallMol in self.inputSmallMols.get():
       molName = getBaseName(smallMol.getFileName())
-      for outFile in outDic[molName]:
-        conf = outFile.split('_confidence')[-1].split('.sdf')[0]
-        posId = outFile.split('/rank')[-1].split('_')[0]
+      if molName in outDic:
+        for outFile in outDic[molName]:
+          conf = outFile.split('_confidence')[-1].split('.sdf')[0]
+          posId = outFile.split('/rank')[-1].split('_')[0]
 
-        newSmallMol = SmallMolecule()
-        newSmallMol.copy(smallMol, copyId=False)
-        newSmallMol._energy = pwobj.Float(conf)
-        newSmallMol.poseFile.set(outFile)
-        newSmallMol.setPoseId(posId)
-        newSmallMol.gridId.set(1)
-        newSmallMol.setMolClass('DiffDock')
-        newSmallMol.setDockId(self.getObjId())
+          newSmallMol = SmallMolecule()
+          newSmallMol.copy(smallMol, copyId=False)
+          newSmallMol._energy = pwobj.Float(conf)
+          newSmallMol.poseFile.set(outFile)
+          newSmallMol.setPoseId(posId)
+          newSmallMol.gridId.set(1)
+          newSmallMol.setMolClass('DiffDock')
+          newSmallMol.setDockId(self.getObjId())
 
-        outputSet.append(newSmallMol)
+          outputSet.append(newSmallMol)
 
 
     outputSet.proteinFile.set(self.inputAtomStruct.get().getFileName())
@@ -160,7 +161,7 @@ class ProtDiffDockDocking(EMProtocol):
     for oDir in outDirs:
       outDic[oDir] = []
       for outFile in os.listdir(self._getExtraPath(oDir)):
-        if '_confidence' in outFile:
+        if '_confidence' in outFile and outFile.split('_confidence-')[-1] != '1000.00.sdf':
           outDic[oDir].append(os.path.join(self._getExtraPath(oDir), outFile))
 
     return outDic
