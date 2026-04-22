@@ -1,0 +1,14 @@
+{
+	"datasets": ["model_building_tutorial", "smallMolecules"],
+	"skippable": {
+		"gpu": [
+			"test_diffdock.TestDiffDock"
+		],
+		"dependencies": [
+			
+		],
+		"others": [
+			
+		]
+	}
+}
