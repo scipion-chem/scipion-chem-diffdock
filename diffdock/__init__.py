@@ -68,8 +68,10 @@ class Plugin(pwchemPlugin):
 															packageVersion=DIFFDOCK_DIC['version'])
 
 		# Installing package
-		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED') \
-			.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
+		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
+		cls.cleanDiffDockYaml(installer)
+
+		installer.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
 		                f'pip install torch==1.13.1+cu117 '
 		                f'--extra-index-url https://download.pytorch.org/whl/cu117', 'PYTORCH_INSTALLED') \
@@ -85,6 +87,25 @@ class Plugin(pwchemPlugin):
 		                f'scikit-learn==1.1.0 torchmetrics==0.11.0 dllogger@git+https://github.com/NVIDIA/dllogger.git  '
 		                f'biopython PyYAML scipy spyrmsd biopandas', 'ESM_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
+
+		cls.cleanDiffDockYaml(installer)
+
+	@classmethod
+	def cleanDiffDockYaml(cls, installer):
+		"""
+        Removes hardcoded default parameters from default_inference_args.yaml.
+
+        
+        """
+		yaml_file = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
+
+		clean_yaml_cmd = (
+			f"sed -i '/inference_steps: 20/d' {yaml_file} && "
+			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yaml_file} && "
+			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yaml_file} && "
+			f"sed -i '/samples_per_complex: 5/d' {yaml_file}"
+		)
+		return installer.addCommand(clean_yaml_cmd, 'YAML_CLEANED')
 
 
 	# ---------------------------------- Protocol functions-----------------------
