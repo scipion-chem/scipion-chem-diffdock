@@ -110,8 +110,8 @@ class ProtDiffDockDocking(EMProtocol):
     if not self.finalDenoise.get():
       args += '--no_final_step_noise '
 
-    scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else f'./workdir/v1.1/score_model'
-    confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else f'./workdir/v1.1/confidence_model'
+    scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else './workdir/v1.1/score_model'
+    confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else './workdir/v1.1/confidence_model'
     if scoreModelDir:
       args += f'--model_dir {scoreModelDir} '
     if confModelDir:
