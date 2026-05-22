@@ -93,15 +93,15 @@ class Plugin(pwchemPlugin):
 		"""
         Removes hardcoded default parameters from default_inference_args.yaml.
         """
-		yaml_file = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
+		yamlFile = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
 
-		clean_yaml_cmd = (
-			f"sed -i '/inference_steps: 20/d' {yaml_file} && "
-			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yaml_file} && "
-			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yaml_file} && "
-			f"sed -i '/samples_per_complex: 5/d' {yaml_file}"
+		cleanCmd = (
+			f"sed -i '/inference_steps: 20/d' {yamlFile} && "
+			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
+			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
+			f"sed -i '/samples_per_complex: 5/d' {yamlFile}"
 		)
-		return installer.addCommand(clean_yaml_cmd, 'YAML_CLEANED')
+		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod

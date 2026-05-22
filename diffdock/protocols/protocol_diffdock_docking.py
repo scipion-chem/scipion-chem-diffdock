@@ -29,6 +29,7 @@ import os, shutil
 from pwem.protocols import EMProtocol
 from pyworkflow.protocol import params
 import pyworkflow.object as pwobj
+from pwem.convert.atom_struct import toPdb
 
 from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
@@ -92,12 +93,12 @@ class ProtDiffDockDocking(EMProtocol):
 
     inASFile = self.inputAtomStruct.get().getFileName()
     outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile).replace('.', '_') + '.pdb'))
-    if inASFile.endswith('.pdbqt') or inASFile.endswith('.cif'):
+    if inASFile.endswith(('.pdbqt', '.cif')):
       pdbFromASFile(inASFile, outASFile)
     elif inASFile.endswith('.pdb'):
       shutil.copy(inASFile, outASFile)
     else:
-      os.link(inASFile, outASFile)
+      toPdb(inASFile, outASFile)
 
   def predictStep(self):
     csvFile = self.buildCSVFile()
@@ -117,7 +118,7 @@ class ProtDiffDockDocking(EMProtocol):
     if confModelDir:
       args += f'--confidence_model_dir {confModelDir} '
 
-    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
+    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir())
 
   def createOutputStep(self):
     outDir = self._getPath('outputLigands')
