@@ -100,6 +100,7 @@ class Plugin(pwchemPlugin):
 			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
 			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
 			f"sed -i '/samples_per_complex: 10/d' {yamlFile}"
+			f"sed -i '/no_final_step_noise: true/d' {yamlFile}"
 		)
 		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
 
