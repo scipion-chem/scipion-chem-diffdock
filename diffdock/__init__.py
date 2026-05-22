@@ -45,8 +45,6 @@ from .constants import *
 _logo = 'mit_logo.png'
 
 class Plugin(pwchemPlugin):
-	"""
-	"""
 	_dfdHome = os.path.join(pwem.Config.EM_ROOT, DIFFDOCK_DIC['name'] + '-' + DIFFDOCK_DIC['version'])
 
 	@classmethod
@@ -94,8 +92,6 @@ class Plugin(pwchemPlugin):
 	def cleanDiffDockYaml(cls, installer):
 		"""
         Removes hardcoded default parameters from default_inference_args.yaml.
-
-        
         """
 		yaml_file = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
 
@@ -106,7 +102,6 @@ class Plugin(pwchemPlugin):
 			f"sed -i '/samples_per_complex: 5/d' {yaml_file}"
 		)
 		return installer.addCommand(clean_yaml_cmd, 'YAML_CLEANED')
-
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
