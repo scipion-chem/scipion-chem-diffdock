@@ -93,7 +93,7 @@ class ProtDiffDockDocking(EMProtocol):
 
     inASFile = self.inputAtomStruct.get().getFileName()
     outASFile = os.path.abspath(self._getTmpPath(getBaseName(inASFile).replace('.', '_') + '.pdb'))
-    if inASFile.endswith('.pdbqt') or inASFile.endswith('.cif'):
+    if inASFile.endswith(('.pdbqt', '.cif')):
       pdbFromASFile(inASFile, outASFile)
     elif inASFile.endswith('.pdb'):
       shutil.copy(inASFile, outASFile)

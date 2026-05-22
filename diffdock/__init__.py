@@ -65,9 +65,6 @@ class Plugin(pwchemPlugin):
 		installer = InstallHelper(DIFFDOCK_DIC['name'], packageHome=cls.getVar(DIFFDOCK_DIC['home']),
 															packageVersion=DIFFDOCK_DIC['version'])
 
-		ymlFile = "environment.yml"
-		splitScript = cls.getScriptsDir('splitPipBlocks.py')
-
 		# Installing package
 		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
 		cls.cleanDiffDockYaml(installer)
@@ -96,15 +93,15 @@ class Plugin(pwchemPlugin):
 		"""
         Removes hardcoded default parameters from default_inference_args.yaml.
         """
-		yaml_file = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
+		yamlFile = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
 
-		clean_yaml_cmd = (
+		cleanCmd = (
 			f"sed -i '/inference_steps: 20/d' {yaml_file} && "
 			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yaml_file} && "
 			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yaml_file} && "
 			f"sed -i '/samples_per_complex: 5/d' {yaml_file}"
 		)
-		return installer.addCommand(clean_yaml_cmd, 'YAML_CLEANED')
+		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
