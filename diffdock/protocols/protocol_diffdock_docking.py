@@ -31,7 +31,7 @@ from pyworkflow.protocol import params
 import pyworkflow.object as pwobj
 from pwem.convert.atom_struct import toPdb
 
-from pwchem import Plugin as pwchemPlugin
+from pwchem import Plugin as pwchemPlugin, Plugin
 from pwchem.constants import OPENBABEL_DIC
 from pwchem.objects import SetOfSmallMolecules, SmallMolecule
 from pwchem.utils import getBaseName, pdbqt2other, pdbFromASFile
@@ -45,7 +45,6 @@ class ProtDiffDockDocking(EMProtocol):
 
   def __init__(self, **kwargs):
     EMProtocol.__init__(self, **kwargs)
-    self.stepsExecutionMode = params.STEPS_PARALLEL
 
   def _defineParams(self, form):
     form.addSection(label='Input')
@@ -111,14 +110,14 @@ class ProtDiffDockDocking(EMProtocol):
     if not self.finalDenoise.get():
       args += '--no_final_step_noise '
 
-    scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else './workdir/v1.1/score_model'
-    confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else './workdir/v1.1/confidence_model'
+    scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else f'./workdir/v1.1/score_model'
+    confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else f'./workdir/v1.1/confidence_model'
     if scoreModelDir:
       args += f'--model_dir {scoreModelDir} '
     if confModelDir:
       args += f'--confidence_model_dir {confModelDir} '
 
-    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir())
+    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
 
   def createOutputStep(self):
     outDir = self._getPath('outputLigands')
