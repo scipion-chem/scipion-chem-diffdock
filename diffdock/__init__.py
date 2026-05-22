@@ -65,6 +65,9 @@ class Plugin(pwchemPlugin):
 		installer = InstallHelper(DIFFDOCK_DIC['name'], packageHome=cls.getVar(DIFFDOCK_DIC['home']),
 															packageVersion=DIFFDOCK_DIC['version'])
 
+		ymlFile = "environment.yml"
+		splitScript = cls.getScriptsDir('splitPipBlocks.py')
+
 		# Installing package
 		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
 		cls.cleanDiffDockYaml(installer)
