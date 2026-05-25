@@ -31,7 +31,7 @@ from pyworkflow.protocol import params
 import pyworkflow.object as pwobj
 from pwem.convert.atom_struct import toPdb
 
-from pwchem import Plugin as pwchemPlugin, Plugin
+from pwchem import Plugin as pwchemPlugin
 from pwchem.constants import OPENBABEL_DIC
 from pwchem.objects import SetOfSmallMolecules, SmallMolecule
 from pwchem.utils import getBaseName, pdbqt2other, pdbFromASFile
