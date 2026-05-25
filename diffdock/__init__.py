@@ -45,8 +45,6 @@ from .constants import *
 _logo = 'mit_logo.png'
 
 class Plugin(pwchemPlugin):
-	"""
-	"""
 	_dfdHome = os.path.join(pwem.Config.EM_ROOT, DIFFDOCK_DIC['name'] + '-' + DIFFDOCK_DIC['version'])
 
 	@classmethod
@@ -67,17 +65,44 @@ class Plugin(pwchemPlugin):
 		installer = InstallHelper(DIFFDOCK_DIC['name'], packageHome=cls.getVar(DIFFDOCK_DIC['home']),
 															packageVersion=DIFFDOCK_DIC['version'])
 
-		ymlFile = "environment.yml"
-		splitScript = cls.getScriptsDir('splitPipBlocks.py')
-
 		# Installing package
-		installer.getCloneCommand(cls.getDiffDockGithub(), binaryFolderName='.', targeName='DIFFDOCK_CLONED') \
-			.addCommand(f"sed -i 's/name: diffdock/name: {cls.getEnvName(DIFFDOCK_DIC)}/g' {ymlFile} && "
-									f'conda env create -f "$(python {splitScript} {ymlFile} True)" && '
-									f'python {splitScript} {ymlFile} False | while read -r f; do conda env update -f "$f"; done',
-									'DIFFDOCK_INSTALLED')\
+		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
+		cls.cleanDiffDockYaml(installer)
+
+		installer.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+		                f'pip install torch==1.13.1+cu117 '
+		                f'--extra-index-url https://download.pytorch.org/whl/cu117', 'PYTORCH_INSTALLED') \
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+						f'conda install -y -c conda-forge prody==2.2.0 && '
+		                f'pip install torch-cluster==1.6.0+pt113cu117 torch-sparse==0.6.16+pt113cu117 '
+		                f'torch-scatter==2.1.0+pt113cu117 torch-spline-conv==1.2.1+pt113cu117 '
+		                f'torch-geometric==2.2.0 '
+		                f'--find-links https://pytorch-geometric.com/whl/torch-1.13.1+cu117.html', 'DIFFDOCK_INSTALLED') \
+			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
+		                f'pip install e3nn==0.5.1 fair-esm==2.0.0 networkx==2.8.4 pandas==1.5.1 '
+		                f'pybind11==2.11.1 pytorch-lightning==1.9.5 rdkit==2022.03.3 '
+		                f'scikit-learn==1.1.0 torchmetrics==0.11.0 dllogger@git+https://github.com/NVIDIA/dllogger.git  '
+		                f'biopython PyYAML scipy spyrmsd biopandas', 'ESM_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
 
+		cls.cleanDiffDockYaml(installer)
+
+	@classmethod
+	def cleanDiffDockYaml(cls, installer):
+		"""
+        Removes hardcoded default parameters from default_inference_args.yaml.
+        """
+		yamlFile = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
+
+		cleanCmd = (
+			f"sed -i '/inference_steps: 20/d' {yamlFile} && "
+			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
+			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
+			f"sed -i '/samples_per_complex: 10/d' {yamlFile} && "
+			f"sed -i '/no_final_step_noise: true/d' {yamlFile}"
+		)
+		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod

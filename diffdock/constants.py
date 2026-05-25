@@ -26,7 +26,7 @@
 # **************************************************************************
 
 # Common constants
-DEFAULT_VERSION = '1.0'
+DEFAULT_VERSION = '1.1.3'
 
 # Package dictionaries
-DIFFDOCK_DIC =  {'name': 'DiffDock',    'version': '1.0',         'home': 'DIFFDOCK_HOME'}
+DIFFDOCK_DIC =  {'name': 'DiffDock',    'version': DEFAULT_VERSION,         'home': 'DIFFDOCK_HOME'}
