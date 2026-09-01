@@ -49,11 +49,16 @@ class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
 
-  def __init__(self, **kwargs):
-    EMProtocol.__init__(self, **kwargs)
-
   def _defineParams(self, form):
     form.addSection(label='Input')
+    form.addHidden(params.USE_GPU, params.BooleanParam, default=True,
+                   label="Use GPU for execution: ",
+                   help="This protocol has both CPU and GPU implementation.\
+                                             Select the one you want to use.")
+
+    form.addHidden(params.GPU_LIST, params.StringParam, default='0', label="Choose GPU IDs",
+                   help="Add a list of GPU devices that can be used (comma-separated)")
+
     iGroup = form.addGroup('Input')
     iGroup.addParam('inputAtomStruct', params.PointerParam, pointerClass="AtomStruct",
                     label='Input atomic structure: ',
@@ -110,8 +115,7 @@ class ProtDiffDockDocking(EMProtocol):
     configFile = self.buildConfigFile()
     outDir = os.path.abspath(self._getExtraPath())
 
-    program = f'{pwchemPlugin.getEnvActivationCommand(DIFFDOCK_DIC)} && python -m inference '
-    args = f'--config {configFile} --protein_ligand_csv {csvFile} --out_dir {outDir} '
+    args = f'--protein_ligand_csv {csvFile} --out_dir {outDir} --config {configFile} '
     args += f'--inference_steps {self.inferSteps.get()} --samples_per_complex {self.nSamples.get()} ' \
             f'--batch_size {self.batchSize.get()} '
 
@@ -122,7 +126,9 @@ class ProtDiffDockDocking(EMProtocol):
     if confModelDir:
       args += f'--confidence_model_dir {confModelDir} '
 
-    self.runJob(program, args, cwd=diffdockPlugin.getPackageDir('DiffDock'))
+    pwchemPlugin.runScript(self, '-m inference', args, DIFFDOCK_DIC, gpuIdx=getattr(self, params.GPU_LIST).get(),
+                           scriptDir='', cwd=diffdockPlugin.getPackageDir('DiffDock'))
+
 
   def createOutputStep(self):
     outDir = self._getPath('outputLigands')
@@ -221,8 +227,7 @@ class ProtDiffDockDocking(EMProtocol):
     return os.path.abspath(self._getExtraPath('inference_args.yaml'))
 
   def buildConfigFile(self):
-    """ Builds the DiffDock config file from its defaults, dropping the keys we set ourselves.
-    """
+    """ Builds the DiffDock config file from its defaults, dropping the keys we set ourselves."""
     defConfFile = diffdockPlugin.getPackageDir(os.path.join('DiffDock', 'default_inference_args.yaml'))
     confLines = []
     with open(defConfFile) as fIn:
