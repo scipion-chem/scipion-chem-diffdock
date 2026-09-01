@@ -97,6 +97,7 @@ class Plugin(pwchemPlugin):
 
 		cleanCmd = (
 			f"sed -i '/inference_steps: 20/d' {yamlFile} && "
+			f"sed -i '/^actual_steps:/d' {yamlFile} && "
 			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
 			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
 			f"sed -i '/samples_per_complex: 10/d' {yamlFile} && "

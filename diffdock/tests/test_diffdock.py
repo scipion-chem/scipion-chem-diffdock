@@ -86,5 +86,8 @@ class TestDiffDock(BaseTest):
     protDiffDock = self._runDiffDock(self.protImportPDB, protSmallFilter)
 
     self._waitOutput(protDiffDock, 'outputSmallMolecules', sleepTime=10)
-    self.assertIsNotNone(getattr(protDiffDock, 'outputSmallMolecules', None))
+    outputSet = getattr(protDiffDock, 'outputSmallMolecules', None)
+    self.assertIsNotNone(outputSet)
+    # The output set is created even if the sampling generated no pose at all
+    self.assertGreater(outputSet.getSize(), 0, 'DiffDock did not generate any docked pose')
 
