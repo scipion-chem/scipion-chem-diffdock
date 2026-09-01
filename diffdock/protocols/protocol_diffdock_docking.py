@@ -39,15 +39,15 @@ from pwchem.utils import getBaseName, pdbqt2other, pdbFromASFile
 from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
+# DiffDock applies its config file over the parsed arguments, so any of these keys present in the
+# config silently overrides what we pass in the command line. They must be dropped from it
+CONFIG_SHADOWED_KEYS = ('inference_steps', 'actual_steps', 'samples_per_complex', 'batch_size',
+                        'no_final_step_noise', 'model_dir', 'confidence_model_dir',
+                        'protein_ligand_csv', 'out_dir')
+
 class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
-
-  # DiffDock applies its config file over the parsed arguments, so any of these keys present in the
-  # config silently overrides what we pass in the command line. They must be dropped from it
-  CONFIG_SHADOWED_KEYS = ('inference_steps', 'actual_steps', 'samples_per_complex', 'batch_size',
-                          'no_final_step_noise', 'model_dir', 'confidence_model_dir',
-                          'protein_ligand_csv', 'out_dir')
 
   def __init__(self, **kwargs):
     EMProtocol.__init__(self, **kwargs)
@@ -227,7 +227,7 @@ class ProtDiffDockDocking(EMProtocol):
     confLines = []
     with open(defConfFile) as fIn:
       for line in fIn:
-        if line.split(':')[0].strip() not in self.CONFIG_SHADOWED_KEYS:
+        if line.split(':')[0].strip() not in CONFIG_SHADOWED_KEYS:
           confLines.append(line)
 
     confFile = self.getConfigFile()
