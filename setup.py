@@ -33,7 +33,7 @@ setup(
     install_requires=[requirements],
     include_package_data=True,
     package_data={
-       'diffdock': ['mit_logo.png'],
+       'diffdock': ['mit_logo.png', 'patches/*.patch'],
     },
     entry_points={
         'pyworkflow.plugin': 'diffdock = diffdock'

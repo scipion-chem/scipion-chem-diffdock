@@ -1,0 +1,48 @@
+--- a/utils/inference_utils.py
++++ b/utils/inference_utils.py
+@@ -44,9 +44,13 @@
+ 
+ def get_sequences(protein_files, protein_sequences):
+     new_sequences = []
++    parsed_files = {}
+     for i in range(len(protein_files)):
+         if protein_files[i] is not None:
+-            new_sequences.append(get_sequences_from_pdbfile(protein_files[i]))
++            # A virtual screening points every complex at the same receptor file, so parse it once
++            if protein_files[i] not in parsed_files:
++                parsed_files[protein_files[i]] = get_sequences_from_pdbfile(protein_files[i])
++            new_sequences.append(parsed_files[protein_files[i]])
+         else:
+             new_sequences.append(protein_sequences[i])
+     return new_sequences
+@@ -143,18 +147,24 @@
+                 model = model.cuda()
+ 
+             protein_sequences = get_sequences(protein_files, protein_sequences)
+-            labels, sequences = [], []
++            # Embed each distinct chain sequence only once and share the result between the complexes
++            # that use it. Keying the embeddings per complex name instead makes a screening of N
++            # ligands against a single receptor run ESM N times and hold N copies of its embedding
++            # in memory (~1.7 MB each for a 340 residue chain), which does not fit for large sets.
++            labels, sequences, sequence_labels = [], [], {}
+             for i in range(len(protein_sequences)):
+-                s = protein_sequences[i].split(':')
+-                sequences.extend(s)
+-                labels.extend([complex_names[i] + '_chain_' + str(j) for j in range(len(s))])
++                for s in protein_sequences[i].split(':'):
++                    if s not in sequence_labels:
++                        sequence_labels[s] = f'sequence_{len(sequence_labels)}'
++                        labels.append(sequence_labels[s])
++                        sequences.append(s)
+ 
+             lm_embeddings = compute_ESM_embeddings(model, alphabet, labels, sequences)
+ 
+             self.lm_embeddings = []
+             for i in range(len(protein_sequences)):
+-                s = protein_sequences[i].split(':')
+-                self.lm_embeddings.append([lm_embeddings[f'{complex_names[i]}_chain_{j}'] for j in range(len(s))])
++                self.lm_embeddings.append([lm_embeddings[sequence_labels[s]]
++                                           for s in protein_sequences[i].split(':')])
+ 
+         elif not lm_embeddings:
+             self.lm_embeddings = [None] * len(self.complex_names)
