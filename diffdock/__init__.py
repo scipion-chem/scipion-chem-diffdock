@@ -66,7 +66,7 @@ class Plugin(pwchemPlugin):
 															packageVersion=DIFFDOCK_DIC['version'])
 
 		# Installing package
-		installer.getClo<neCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
+		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
 
 		installer.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
