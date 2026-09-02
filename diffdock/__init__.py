@@ -66,8 +66,7 @@ class Plugin(pwchemPlugin):
 															packageVersion=DIFFDOCK_DIC['version'])
 
 		# Installing package
-		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
-		cls.cleanDiffDockYaml(installer)
+		installer.getClo<neCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
 
 		installer.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
@@ -85,25 +84,6 @@ class Plugin(pwchemPlugin):
 		                f'scikit-learn==1.1.0 torchmetrics==0.11.0 dllogger@git+https://github.com/NVIDIA/dllogger.git  '
 		                f'biopython PyYAML scipy spyrmsd biopandas', 'ESM_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
-
-		cls.cleanDiffDockYaml(installer)
-
-	@classmethod
-	def cleanDiffDockYaml(cls, installer):
-		"""
-        Removes hardcoded default parameters from default_inference_args.yaml.
-        """
-		yamlFile = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
-
-		cleanCmd = (
-			f"sed -i '/inference_steps: 20/d' {yamlFile} && "
-			f"sed -i '/^actual_steps:/d' {yamlFile} && "
-			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
-			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
-			f"sed -i '/samples_per_complex: 10/d' {yamlFile} && "
-			f"sed -i '/no_final_step_noise: true/d' {yamlFile}"
-		)
-		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
