@@ -67,8 +67,6 @@ class Plugin(pwchemPlugin):
 
 		# Installing package
 		installer.getCloneCommand(cls.getDiffDockGithub(), targeName='DIFFDOCK_CLONED')
-		cls.cleanDiffDockYaml(installer)
-		cls.patchDiffDockSource(installer)
 
 		installer.getCondaEnvCommand(pythonVersion='3.9', requirementsFile=False) \
 			.addCommand(f'{cls.getEnvActivationCommand(DIFFDOCK_DIC)} && '
@@ -86,39 +84,6 @@ class Plugin(pwchemPlugin):
 		                f'scikit-learn==1.1.0 torchmetrics==0.11.0 dllogger@git+https://github.com/NVIDIA/dllogger.git  '
 		                f'biopython PyYAML scipy spyrmsd biopandas', 'ESM_INSTALLED') \
 			.addPackage(env, ['git', 'conda', 'pip'], default=default)
-
-		cls.cleanDiffDockYaml(installer)
-
-	@classmethod
-	def cleanDiffDockYaml(cls, installer):
-		"""
-        Removes hardcoded default parameters from default_inference_args.yaml.
-        """
-		yamlFile = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock', 'default_inference_args.yaml')
-
-		cleanCmd = (
-			f"sed -i '/inference_steps: 20/d' {yamlFile} && "
-			f"sed -i '/^actual_steps:/d' {yamlFile} && "
-			f"sed -i '/model_dir: \\.\\/workdir\\/v1.1\\/score_model/d' {yamlFile} && "
-			f"sed -i '/confidence_model_dir: \\.\\/workdir\\/v1.1\\/confidence_model/d' {yamlFile} && "
-			f"sed -i '/samples_per_complex: 10/d' {yamlFile} && "
-			f"sed -i '/no_final_step_noise: true/d' {yamlFile}"
-		)
-		return installer.addCommand(cleanCmd, 'YAML_CLEANED')
-
-	@classmethod
-	def patchDiffDockSource(cls, installer):
-		"""
-        Applies the patches shipped with the plugin over the cloned DiffDock source.
-        esmEmbeddingsDedup: DiffDock computes one ESM embedding per complex, so screening N ligands
-        against a single receptor embeds it N times and keeps N copies of the SAME embedding in memory.
-        """
-		dfdDir = os.path.join(cls.getVar(DIFFDOCK_DIC['home']), 'DiffDock')
-
-		for patchName in ['esmEmbeddingsDedup']:
-			patchFile = cls.getPluginHome(os.path.join('patches', f'{patchName}.patch'))
-			installer.addCommand(f'cd {dfdDir} && patch -p1 -N -i {patchFile}', f'{patchName.upper()}_PATCHED')
-		return installer
 
 	# ---------------------------------- Protocol functions-----------------------
 	@classmethod
