@@ -39,6 +39,12 @@ from pwchem.utils import getBaseName, pdbqt2other, pdbFromASFile
 from .. import Plugin as diffdockPlugin
 from ..constants import DIFFDOCK_DIC
 
+# DiffDock applies its config file over the parsed arguments, so any of these keys present in the
+# config silently overrides what we pass in the command line. They must be dropped from it
+CONFIG_SHADOWED_KEYS = ('inference_steps', 'actual_steps', 'samples_per_complex', 'batch_size',
+                        'no_final_step_noise', 'model_dir', 'confidence_model_dir',
+                        'protein_ligand_csv', 'out_dir')
+
 class ProtDiffDockDocking(EMProtocol):
   """Run a prediction using a DiffDock trained model over a proteins and a set of ligands"""
   _label = 'diffdock docking'
@@ -106,13 +112,12 @@ class ProtDiffDockDocking(EMProtocol):
 
   def predictStep(self):
     csvFile = self.buildCSVFile()
+    configFile = self.buildConfigFile()
     outDir = os.path.abspath(self._getExtraPath())
 
-    args = f'--protein_ligand_csv {csvFile} --out_dir {outDir} '
+    args = f'--protein_ligand_csv {csvFile} --out_dir {outDir} --config {configFile} '
     args += f'--inference_steps {self.inferSteps.get()} --samples_per_complex {self.nSamples.get()} ' \
             f'--batch_size {self.batchSize.get()} '
-    if not self.finalDenoise.get():
-      args += '--no_final_step_noise '
 
     scoreModelDir = os.path.dirname(self.scoreModel.get()) if self.scoreModel.get() else './workdir/v1.1/score_model'
     confModelDir = os.path.dirname(self.confidenceModel.get()) if self.confidenceModel.get() else './workdir/v1.1/confidence_model'
@@ -217,3 +222,23 @@ class ProtDiffDockDocking(EMProtocol):
       for smi, title in smiDic.items():
         f.write(f'{title},{iASFile},{smi},\n')
     return csvFile
+
+  def getConfigFile(self):
+    return os.path.abspath(self._getExtraPath('inference_args.yaml'))
+
+  def buildConfigFile(self):
+    """ Builds the DiffDock config file from its defaults, dropping the keys we set ourselves."""
+    defConfFile = diffdockPlugin.getPackageDir(os.path.join('DiffDock', 'default_inference_args.yaml'))
+    confLines = []
+    with open(defConfFile) as fIn:
+      for line in fIn:
+        if line.split(':')[0].strip() not in CONFIG_SHADOWED_KEYS:
+          confLines.append(line)
+
+    confFile = self.getConfigFile()
+    with open(confFile, 'w') as f:
+      f.writelines(confLines)
+      # DiffDock skips the last (noisiest) denoising step by default
+      f.write(f'actual_steps: {max(1, self.inferSteps.get() - 1)}\n')
+      f.write(f'no_final_step_noise: {str(not self.finalDenoise.get()).lower()}\n')
+    return confFile
